@@ -3,16 +3,17 @@ import time
 import json
 import logging
 from decimal import Decimal
-from config import API_SECRET, HEADERS, ORDER_URL, generate_signature
+from config import HEADERS, ORDER_URL, generate_signature
 
 logger = logging.getLogger(__name__)
+
 
 # --- 現在価格の取得（パブリックAPI） ---
 def get_current_prices(symbols):
     result = {}
     for symbol in symbols:
         try:
-            url = f"https://api.coin.z.com/public/v1/ticker?symbol={symbol}_JPY"
+            url = f"https://api.coin.z.com/public/v1/ticker?symbol={symbol}_JPY"  # noqa: E501
             resp = requests.get(url)
             resp.raise_for_status()
             data = resp.json()
@@ -20,6 +21,7 @@ def get_current_prices(symbols):
         except Exception as e:
             logger.error(f"{symbol}価格取得エラー: {e}")
     return result
+
 
 # --- 日本円残高の取得（プライベートAPI） ---
 def get_jpy_balance():
@@ -46,6 +48,7 @@ def get_jpy_balance():
     except Exception as e:
         logger.error(f"残高取得エラー: {e}")
         return None
+
 
 # --- 成行注文の実行（プライベートAPI） ---
 def place_order(symbol, size: Decimal):

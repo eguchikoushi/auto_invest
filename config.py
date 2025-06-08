@@ -16,6 +16,7 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 SETTINGS_PATH = os.path.join(DATA_DIR, "settings.json")
 os.makedirs(DATA_DIR, exist_ok=True)
 
+
 # --- JSON読み込み関数 ---
 def load_json(path, default=None):
     if not os.path.exists(path):
@@ -26,6 +27,7 @@ def load_json(path, default=None):
     except Exception as e:
         logger.error(f"JSON読み込み失敗: {path} - {e}")
         return default
+
 
 # --- 設定ロード ---
 settings = load_json(SETTINGS_PATH)
@@ -39,7 +41,15 @@ HEADERS = {
     "API-KEY": API_KEY,
 }
 
+
 # --- HMAC署名生成 ---
 def generate_signature(timestamp, method, endpoint, body):
+    if API_SECRET is None:
+        raise ValueError("API_SECRET が未設定です")
+
     message = f"{timestamp}{method}{endpoint}{body}"
-    return hmac.new(API_SECRET.encode(), message.encode(), hashlib.sha256).hexdigest()
+    return hmac.new(
+        API_SECRET.encode(),
+        message.encode(),
+        hashlib.sha256
+    ).hexdigest()

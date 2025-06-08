@@ -1,17 +1,14 @@
 import logging
-import time
-import json
-import requests
 import datetime
 from decimal import Decimal, ROUND_DOWN
-from config import settings, API_SECRET, HEADERS
-from notify import send_slack, send_email
-from config import generate_signature
+from config import settings
+from notify import send_slack
 from api_client import place_order
 
 logger = logging.getLogger(__name__)
 
 ORDER_URL = "https://api.coin.z.com/private/v1/order"
+
 
 # --- 平均価格の計算 ---
 def get_30day_average(symbol, db):
@@ -20,6 +17,7 @@ def get_30day_average(symbol, db):
         return None
     prices = [p for _, p in history]
     return sum(prices) / len(prices)
+
 
 # --- RSIの計算 ---
 def calculate_rsi(symbol, db, period=14):
@@ -49,6 +47,7 @@ def calculate_rsi(symbol, db, period=14):
     rsi = Decimal("100") - (Decimal("100") / (Decimal("1") + rs))
     return rsi.quantize(Decimal("0.01"))
 
+
 # --- 長期下落トレンド判定 ---
 def is_long_term_downtrend(symbol, db):
     history = db.get_price_history(symbol, 37)
@@ -63,15 +62,18 @@ def is_long_term_downtrend(symbol, db):
 
     return sma_now < sma_prev
 
+
 # --- 購入結果処理 ---
-def handle_order_result(response, symbol, jpy, amount, current_price, purchase_type,  db):
+def handle_order_result(response, symbol, jpy, amount, current_price,
+                        purchase_type,  db):
     if response.status_code == 200:
         logger.info(f"注文完了: {symbol} {jpy} 円 = {amount}")
         try:
             send_slack(f"[BUY] {symbol}注文成功: {jpy}円 = {amount}")
         except Exception as e:
             logger.warning(f"Slack通知失敗: {e}")
-        db.record_purchase_history(symbol, jpy, amount, purchase_type, current_price)
+        db.record_purchase_history(symbol, jpy, amount, purchase_type,
+                                   current_price)
     else:
         logger.error(f"注文失敗: {response.status_code} {response.text}")
         try:
@@ -79,8 +81,13 @@ def handle_order_result(response, symbol, jpy, amount, current_price, purchase_t
         except Exception as e:
             logger.warning(f"Slack通知失敗: {e}")
 
+
 # --- 基本購入を実行する ---
 def execute_base_purchase(current_prices, db):
+    if settings is None:
+        logger.error("設定が未設定のため、基本購入をスキップします")
+        return
+
     now = datetime.datetime.now()
     logger.info("基本購入を開始します。")
 
@@ -98,19 +105,25 @@ def execute_base_purchase(current_prices, db):
         current_price = current_prices[symbol]
 
         last_row = db.get_last_purchase(symbol)
-        last_time = datetime.datetime.fromisoformat(last_row[0]) if last_row else None
+        last_time = datetime.datetime.fromisoformat(
+                        last_row[0]) if last_row else None
         if not last_time or (now - last_time).days >= interval_days:
             min_unit = Decimal(str(conf["min_order_amount"]))
-            amount = (Decimal(jpy) / current_price).quantize(min_unit, rounding=ROUND_DOWN)
+            amount = (Decimal(jpy) / current_price).quantize(
+                min_unit, rounding=ROUND_DOWN
+            )
 
             response = place_order(symbol, amount)
-            handle_order_result(response, symbol, jpy, amount,current_price, "base", db)
+            handle_order_result(response, symbol, jpy,
+                                amount, current_price, "base", db)
             db.record_price_history(symbol, current_price)
         else:
             logger.info(f"{symbol} 基本購入スキップ（{interval_days}日未満）")
 
+
 # --- 追加購入条件の判定 ---
-def check_add_purchase_conditions(symbol, conf, current_price, last_price, avg_price, rsi, db):
+def check_add_purchase_conditions(symbol, conf, current_price, last_price,
+                                  avg_price, rsi, db):
     score = 0
     reasons = []
 
@@ -144,8 +157,13 @@ def check_add_purchase_conditions(symbol, conf, current_price, last_price, avg_p
 
     return score, reasons
 
+
 # --- 追加購入の実行 ---
 def execute_add_purchase(current_prices, db):
+    if settings is None:
+        logger.error("設定が未設定のため、追加購入をスキップします")
+        return
+
     skipped_symbols = set()
 
     # --- 価格記録 ---
@@ -184,19 +202,31 @@ def execute_add_purchase(current_prices, db):
         avg_price = get_30day_average(symbol, db)
         rsi = calculate_rsi(symbol, db)
 
-        score, reasons = check_add_purchase_conditions(symbol, conf, current_price, last_price, avg_price, rsi, db)
+        score, reasons = check_add_purchase_conditions(
+            symbol, conf, current_price, last_price, avg_price, rsi, db
+        )
 
         min_score = conf.get("min_score", 2)
         if score >= min_score:
-            logger.info(f"{symbol} 条件一致 スコア={score}（{', '.join(reasons)}）")
+            logger.info(
+                f"{symbol} 条件一致 スコア={score}（{', '.join(reasons)}）"
+            )
             try:
-                send_slack(f"[BUY] {symbol} 追加購入実行（スコア={score}）: {', '.join(reasons)}")
+                send_slack(
+                    f"[BUY] {symbol} 追加購入実行（スコア={score}）: {', '.join(reasons)}"
+                )
             except Exception as e:
                 logger.warning(f"Slack通知失敗: {e}")
 
             min_unit = Decimal(str(conf["min_order_amount"]))
-            amount = (Decimal(jpy) / current_price).quantize(min_unit, rounding=ROUND_DOWN)
+            amount = (Decimal(jpy) / current_price).quantize(
+                min_unit, rounding=ROUND_DOWN
+            )
             response = place_order(symbol, amount)
-            handle_order_result(response, symbol, jpy, amount, current_price, "add", db)
+            handle_order_result(response, symbol, jpy,
+                                amount, current_price, "add", db)
         else:
-            logger.info(f"{symbol} 追加購入条件を満たしません（スコア={score}, 理由: {', '.join(reasons)}）")
+
+            logger.info(
+                f"{symbol} 追加購入条件を満たしません（スコア={score}, {', '.join(reasons)}）"
+            )

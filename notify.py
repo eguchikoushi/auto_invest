@@ -6,9 +6,10 @@ from config import settings
 import logging
 logger = logging.getLogger(__name__)
 
+
 # --- メール通知 ---
 def send_email(subject: str, body: str) -> None:
-    if not settings.get("mail", {}).get("enabled", False):
+    if settings is None or not settings.get("mail", {}).get("enabled", False):
         return
 
     smtp_server = "smtp.gmail.com"
@@ -16,6 +17,9 @@ def send_email(subject: str, body: str) -> None:
     smtp_user = os.getenv("MAIL_USER")
     smtp_pass = os.getenv("MAIL_PASS")
     email_to = os.getenv("MAIL_TO")
+
+    if smtp_user is None or smtp_pass is None or email_to is None:
+        raise ValueError("MAIL_USER , MAIL_PASS または MAIL_TO が環境変数に設定されていません。")
 
     msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
@@ -30,6 +34,7 @@ def send_email(subject: str, body: str) -> None:
         logger.info(f"メール送信成功: {subject}")
     except Exception as e:
         logger.error(f"メール送信失敗: {e}")
+
 
 # --- Slack通知 ---
 def send_slack(message: str) -> None:

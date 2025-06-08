@@ -3,30 +3,16 @@
 
 import os
 import sys
-import time
-import json
-import hmac
-import hashlib
-import smtplib
 import argparse
-import sqlite3
-import requests
 import datetime
 import logging
-from email.mime.text import MIMEText
-from decimal import Decimal, ROUND_DOWN
-from dotenv import load_dotenv
+from decimal import Decimal
 # --- 独自モジュール import ---
-from config import settings, BASE_DIR, DATA_DIR, HEADERS, generate_signature
+from config import settings, BASE_DIR, DATA_DIR
 from db_manager import DBManager
 from notify import send_email, send_slack
 from purchase import execute_base_purchase, execute_add_purchase
 from api_client import get_current_prices, get_jpy_balance
-
-# --- 設定読み込みチェック ---
-if settings is None:
-    logger.critical("設定ファイルの読み込みに失敗しました。")
-    sys.exit(1)
 
 # --- Logger初期設定 ---
 LOG_DIR = os.path.join(BASE_DIR, "log")
@@ -37,12 +23,21 @@ logger.setLevel(logging.INFO)
 
 log_file_path = os.path.join(LOG_DIR, f"{datetime.datetime.now():%Y-%m}.log")
 file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
-formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+formatter = logging.Formatter(
+    "[%(asctime)s] [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
+# --- 設定読み込みチェック ---
+if settings is None:
+    logger.critical("設定ファイルの読み込みに失敗しました。")
+    sys.exit(1)
+
 # --- ファイルパス ---
 os.makedirs(LOG_DIR, exist_ok=True)
+
 
 def check_balance():
     threshold = Decimal(str(settings.get("balance_warning_threshold_jpy", 0)))
@@ -59,12 +54,16 @@ def check_balance():
         except Exception as e:
             logger.warning(f"メール通知失敗: {e}")
 
+
 def main():
     db = DBManager(data_dir=DATA_DIR)
 
     db.ensure_initialized()
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=["basecheck", "dropcheck"], required=True)
+    parser.add_argument(
+        "--mode", choices=["basecheck", "dropcheck"],
+        required=True
+    )
     args = parser.parse_args()
 
     check_balance()
@@ -73,9 +72,10 @@ def main():
     current_prices = get_current_prices(symbols)
 
     if args.mode == "basecheck":
-        execute_base_purchase(current_prices,db)
+        execute_base_purchase(current_prices, db)
     elif args.mode == "dropcheck":
-        execute_add_purchase(current_prices,db)
+        execute_add_purchase(current_prices, db)
+
 
 if __name__ == "__main__":
     main()
