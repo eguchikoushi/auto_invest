@@ -1,0 +1,35 @@
+{
+  "base_purchase": {
+    "settings": {
+      "BTC":  { "jpy": 500, "interval_days": 1, "min_order_amount": 0.00001 },
+      "ETH":  { "jpy": 500, "interval_days": 1, "min_order_amount": 0.001 },
+      "BCH":  { "jpy": 0,   "interval_days": 3, "min_order_amount": 0.01 },
+      "LTC":  { "jpy": 0,   "interval_days": 3, "min_order_amount": 0.1 },
+      "XRP":  { "jpy": 0,   "interval_days": 3, "min_order_amount": 10 },
+      "ADA":  { "jpy": 0,   "interval_days": 7, "min_order_amount": 1 },
+      "DOT":  { "jpy": 0,   "interval_days": 7, "min_order_amount": 0.1 },
+      "SOL":  { "jpy": 0,   "interval_days": 7, "min_order_amount": 0.01 },
+      "LINK": { "jpy": 0,   "interval_days": 7, "min_order_amount": 0.1 },
+      "DOGE": { "jpy": 0,   "interval_days": 7, "min_order_amount": 100 }
+    }
+  },
+  "add_purchase": {
+    "enabled": true,
+    "settings": {
+      "BTC":  { "jpy": 1000, "min_score": 2, "min_order_amount": 0.00001, "price_drop_percent": -3, "sma_deviation": -5, "rsi_threshold": 30 },
+      "ETH":  { "jpy": 1000, "min_score": 2, "min_order_amount": 0.001,   "price_drop_percent": -3, "sma_deviation": -5, "rsi_threshold": 30 },
+      "BCH":  { "jpy": 0,    "min_score": 2, "min_order_amount": 0.01,    "price_drop_percent": -4, "sma_deviation": -6, "rsi_threshold": 35 },
+      "LTC":  { "jpy": 0,    "min_score": 2, "min_order_amount": 0.1,     "price_drop_percent": -4, "sma_deviation": -6, "rsi_threshold": 35 },
+      "XRP":  { "jpy": 0,    "min_score": 2, "min_order_amount": 10,      "price_drop_percent": -5, "sma_deviation": -7, "rsi_threshold": 35 },
+      "ADA":  { "jpy": 0,    "min_score": 2, "min_order_amount": 1,       "price_drop_percent": -5, "sma_deviation": -7, "rsi_threshold": 35 },
+      "DOT":  { "jpy": 0,    "min_score": 2, "min_order_amount": 0.1,     "price_drop_percent": -5, "sma_deviation": -7, "rsi_threshold": 35 },
+      "SOL":  { "jpy": 0,    "min_score": 2, "min_order_amount": 0.01,    "price_drop_percent": -5, "sma_deviation": -6, "rsi_threshold": 35 },
+      "LINK": { "jpy": 0,    "min_score": 2, "min_order_amount": 0.1,     "price_drop_percent": -5, "sma_deviation": -6, "rsi_threshold": 35 },
+      "DOGE": { "jpy": 0,    "min_score": 2, "min_order_amount": 100,     "price_drop_percent": -5, "sma_deviation": -7, "rsi_threshold": 35 }
+    }
+  },
+  "mail": {
+    "enabled": true
+  },
+  "balance_warning_threshold_jpy": 99999
+}
