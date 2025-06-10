@@ -7,14 +7,9 @@ import argparse
 import datetime
 import logging
 from decimal import Decimal
-# --- 独自モジュール import ---
-from config import settings, BASE_DIR, DATA_DIR
-from db_manager import DBManager
-from notify import send_email, send_slack
-from purchase import execute_base_purchase, execute_add_purchase
-from api_client import get_current_prices, get_jpy_balance
 
-# --- Logger初期設定 ---
+# --- Logger初期設定（モジュールimport前に設定） ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_DIR = os.path.join(BASE_DIR, "log")
 os.makedirs(LOG_DIR, exist_ok=True)
 
@@ -30,13 +25,17 @@ formatter = logging.Formatter(
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
+# --- モジュールimport ---
+from config import settings, BASE_DIR, DATA_DIR  # noqa: E402
+from db_manager import DBManager  # noqa: E402
+from notify import send_email, send_slack  # noqa: E402
+from purchase import execute_base_purchase, execute_add_purchase  # noqa: E402
+from api_client import get_current_prices, get_jpy_balance  # noqa: E402
+
 # --- 設定読み込みチェック ---
 if settings is None:
     logger.critical("設定ファイルの読み込みに失敗しました。")
     sys.exit(1)
-
-# --- ファイルパス ---
-os.makedirs(LOG_DIR, exist_ok=True)
 
 
 def check_balance():
