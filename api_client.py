@@ -14,7 +14,7 @@ def get_current_prices(symbols):
     for symbol in symbols:
         try:
             url = f"https://api.coin.z.com/public/v1/ticker?symbol={symbol}_JPY"  # noqa: E501
-            resp = requests.get(url)
+            resp = requests.get(url, timeout=5)
             resp.raise_for_status()
             data = resp.json()
             result[symbol] = Decimal(data['data'][0]['last'])
@@ -39,7 +39,7 @@ def get_jpy_balance():
 
     try:
         url = "https://api.coin.z.com/private/v1/account/assets"
-        resp = requests.get(url, headers=headers)
+        resp = requests.get(url, headers=headers, timeout=5)
         resp.raise_for_status()
         assets = resp.json()["data"]
         for asset in assets:
@@ -68,6 +68,10 @@ def place_order(symbol, size: Decimal):
         "API-SIGN": signature
     })
 
-    response = requests.post(ORDER_URL, headers=headers, data=body_json)
-
-    return response
+    try:
+        response = requests.post(ORDER_URL, headers=headers, data=body_json,
+                                 timeout=5)
+        return response
+    except Exception as e:
+        logger.error(f"注文送信エラー: {e}")
+        raise
