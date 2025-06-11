@@ -3,6 +3,7 @@ import json
 import logging
 import hmac
 import hashlib
+import sys
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
@@ -29,8 +30,58 @@ def load_json(path, default=None):
         return default
 
 
+# --- 設定バリデーション関数 ---
+def validate_settings(settings):
+    logger.info("設定ファイルのバリデーションを開始...")
+
+    base_settings = settings.get("base_purchase", {}).get("settings", {})
+    required_keys_base = ["jpy", "interval_days", "min_order_amount"]
+
+    for symbol, cfg in base_settings.items():
+        if any(k not in cfg for k in required_keys_base):
+            logger.error(f"base_purchase設定に必要な項目が不足 ({symbol}): {cfg}")
+            sys.exit(1)
+        if (
+            cfg["jpy"] < 0 or
+            cfg["interval_days"] < 1 or
+            cfg["min_order_amount"] <= 0
+        ):
+            logger.error(f"base_purchase設定エラー ({symbol}): {cfg}")
+            sys.exit(1)
+
+    add_settings = settings.get("add_purchase", {}).get("settings", {})
+    required_keys_add = [
+        "jpy", "min_score", "min_order_amount",
+        "price_drop_percent", "sma_deviation", "rsi_threshold"
+    ]
+
+    for symbol, cfg in add_settings.items():
+        if any(k not in cfg for k in required_keys_add):
+            logger.error(f"add_purchase設定に必要な項目が不足 ({symbol}): {cfg}")
+            sys.exit(1)
+        if (
+            cfg["jpy"] < 0 or
+            cfg["min_order_amount"] <= 0 or
+            cfg["min_score"] < 0
+        ):
+            logger.error(f"add_purchase設定エラー ({symbol}): {cfg}")
+            sys.exit(1)
+
+    if not isinstance(settings.get("mail", {}).get("enabled"), bool):
+        logger.error("mail設定の 'enabled' はboolである必要があります")
+        sys.exit(1)
+
+    threshold = settings.get("balance_warning_threshold_jpy")
+    if not isinstance(threshold, int) or threshold < 0:
+        logger.error("balance_warning_threshold_jpy は0以上の整数である必要があります")
+        sys.exit(1)
+
+    logger.info("設定ファイルバリデーション完了")
+
+
 # --- 設定ロード ---
 settings = load_json(SETTINGS_PATH)
+validate_settings(settings)
 
 # --- API情報 ---
 API_KEY = os.getenv("API_KEY")
