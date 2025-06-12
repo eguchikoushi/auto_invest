@@ -29,7 +29,7 @@ logger.addHandler(file_handler)
 from config import settings, BASE_DIR, DATA_DIR  # noqa: E402
 from db_manager import DBManager  # noqa: E402
 from notify import send_email, send_slack  # noqa: E402
-from purchase import execute_base_purchase, execute_add_purchase  # noqa: E402
+from purchase import execute_base_purchase, execute_add_purchase_flow  # noqa: E402 E501
 from api_client import get_current_prices, get_jpy_balance  # noqa: E402
 
 # --- 設定読み込みチェック ---
@@ -73,7 +73,7 @@ def main():
     if args.mode == "basecheck":
         execute_base_purchase(current_prices, db)
     elif args.mode == "dropcheck":
-        execute_add_purchase(current_prices, db)
+        execute_add_purchase_flow(current_prices, db)
 
 
 if __name__ == "__main__":
