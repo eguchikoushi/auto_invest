@@ -5,6 +5,7 @@ import sqlite3
 import datetime
 from decimal import Decimal
 import logging
+
 logger = logging.getLogger(__name__)
 
 DB_FILENAME = "history.db"
@@ -14,23 +15,26 @@ class DBManager:
     def __init__(self, data_dir):
         self.db_path = os.path.join(data_dir, DB_FILENAME)
 
-# --- DB初期化 ---
+    # --- DB初期化 ---
     def ensure_initialized(self):
         conn = None
         try:
             conn = sqlite3.connect(self.db_path)
             cur = conn.cursor()
 
-            cur.execute("""
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS price_history (
                     symbol TEXT NOT NULL,
                     date TEXT NOT NULL,
                     price TEXT NOT NULL,
                     PRIMARY KEY (symbol, date)
                 )
-            """)
+            """
+            )
 
-            cur.execute("""
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS purchase_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     symbol TEXT NOT NULL,
@@ -40,7 +44,8 @@ class DBManager:
                     crypto_amount TEXT NOT NULL,
                     price TEXT NOT NULL
                 )
-            """)
+            """
+            )
 
             conn.commit()
         except Exception as e:
@@ -49,17 +54,20 @@ class DBManager:
             if conn:
                 conn.close()
 
-# --- 指定通貨の評価額推移を記録する ---
+    # --- 指定通貨の評価額推移を記録する ---
     def record_price_history(self, symbol, current_price):
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         conn = None
         try:
             conn = sqlite3.connect(self.db_path)
             cur = conn.cursor()
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT OR REPLACE INTO price_history (symbol, date, price)
                 VALUES (?, ?, ?)
-            """, (symbol, today, str(current_price)))
+            """,
+                (symbol, today, str(current_price)),
+            )
             conn.commit()
         except Exception as e:
             handle_db_error(e, context="評価額推移記録処理")
@@ -67,16 +75,19 @@ class DBManager:
             if conn:
                 conn.close()
 
-# --- 指定通貨の評価額推移を取得する ---
+    # --- 指定通貨の評価額推移を取得する ---
     def get_price_history(self, symbol, days):
         conn = None
         try:
             conn = sqlite3.connect(self.db_path)
             cur = conn.cursor()
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT date, price FROM price_history
                 WHERE symbol = ? ORDER BY date DESC LIMIT ?
-            """, (symbol, days))
+            """,
+                (symbol, days),
+            )
             rows = cur.fetchall()
             return [(r[0], Decimal(r[1])) for r in reversed(rows)]
         except Exception as e:
@@ -86,9 +97,10 @@ class DBManager:
             if conn:
                 conn.close()
 
-# --- 指定通貨の購入履歴を記録する ---
-    def record_purchase_history(self, symbol, jpy_amount, crypto_amount,
-                                purchase_type, current_price):
+    # --- 指定通貨の購入履歴を記録する ---
+    def record_purchase_history(
+        self, symbol, jpy_amount, crypto_amount, purchase_type, current_price
+    ):
         date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         conn = None
         try:
@@ -111,8 +123,8 @@ class DBManager:
                     date,
                     str(jpy_amount),
                     str(crypto_amount),
-                    str(current_price)
-                )
+                    str(current_price),
+                ),
             )
             conn.commit()
         except Exception as e:
@@ -121,7 +133,7 @@ class DBManager:
             if conn:
                 conn.close()
 
-# --- 最新の購入レコードを取得 ---
+    # --- 最新の購入レコードを取得 ---
     def get_last_purchase(self, symbol, purchase_type=None):
         conn = None
         try:
@@ -140,7 +152,7 @@ class DBManager:
                       AND purchase_type = ?  -- 基本購入 or 追加購入
                     ORDER BY date DESC LIMIT 1
                     """,
-                    (symbol, purchase_type)
+                    (symbol, purchase_type),
                 )
             else:
                 cur.execute(
@@ -154,7 +166,8 @@ class DBManager:
                     WHERE symbol = ?         -- 通貨シンボル
                     ORDER BY date DESC LIMIT 1
                     """,
-                    (symbol,))
+                    (symbol,),
+                )
             return cur.fetchone()
         except Exception as e:
             handle_db_error(e, context="最新購入取得処理")

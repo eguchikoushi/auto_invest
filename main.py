@@ -19,8 +19,7 @@ logger.setLevel(logging.INFO)
 log_file_path = os.path.join(LOG_DIR, f"{datetime.datetime.now():%Y-%m}.log")
 file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
 formatter = logging.Formatter(
-    "[%(asctime)s] [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+    "[%(asctime)s] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
 )
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
@@ -59,10 +58,7 @@ def main():
 
     db.ensure_initialized()
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--mode", choices=["basecheck", "dropcheck"],
-        required=True
-    )
+    parser.add_argument("--mode", choices=["basecheck", "dropcheck"], required=True)
     args = parser.parse_args()
 
     check_balance()

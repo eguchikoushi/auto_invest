@@ -13,11 +13,11 @@ def get_current_prices(symbols):
     result = {}
     for symbol in symbols:
         try:
-            url = f"https://api.coin.z.com/public/v1/ticker?symbol={symbol}_JPY"  # noqa: E501
+            url = f"https://api.coin.z.com/public/v1/ticker?symbol={symbol}_JPY"
             resp = requests.get(url, timeout=5)
             resp.raise_for_status()
             data = resp.json()
-            result[symbol] = Decimal(data['data'][0]['last'])
+            result[symbol] = Decimal(data["data"][0]["last"])
         except Exception as e:
             logger.error(f"{symbol}価格取得エラー: {e}")
     return result
@@ -32,10 +32,7 @@ def get_jpy_balance():
 
     signature = generate_signature(timestamp, method, endpoint, body)
     headers = HEADERS.copy()
-    headers.update({
-        "API-TIMESTAMP": timestamp,
-        "API-SIGN": signature
-    })
+    headers.update({"API-TIMESTAMP": timestamp, "API-SIGN": signature})
 
     try:
         url = "https://api.coin.z.com/private/v1/account/assets"
@@ -56,21 +53,17 @@ def place_order(symbol, size: Decimal):
         "symbol": symbol,
         "side": "BUY",
         "executionType": "MARKET",
-        "size": str(size)
+        "size": str(size),
     }
     body_json = json.dumps(body)
     timestamp = str(int(time.time() * 1000))
     signature = generate_signature(timestamp, "POST", "/v1/order", body_json)
 
     headers = HEADERS.copy()
-    headers.update({
-        "API-TIMESTAMP": timestamp,
-        "API-SIGN": signature
-    })
+    headers.update({"API-TIMESTAMP": timestamp, "API-SIGN": signature})
 
     try:
-        response = requests.post(ORDER_URL, headers=headers, data=body_json,
-                                 timeout=5)
+        response = requests.post(ORDER_URL, headers=headers, data=body_json, timeout=5)
         return response
     except Exception as e:
         logger.error(f"注文送信エラー: {e}")

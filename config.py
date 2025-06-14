@@ -41,29 +41,25 @@ def validate_settings(settings):
         if any(k not in cfg for k in required_keys_base):
             logger.error(f"base_purchase設定に必要な項目が不足 ({symbol}): {cfg}")
             sys.exit(1)
-        if (
-            cfg["jpy"] < 0 or
-            cfg["interval_days"] < 1 or
-            cfg["min_order_amount"] <= 0
-        ):
+        if cfg["jpy"] < 0 or cfg["interval_days"] < 1 or cfg["min_order_amount"] <= 0:
             logger.error(f"base_purchase設定エラー ({symbol}): {cfg}")
             sys.exit(1)
 
     add_settings = settings.get("add_purchase", {}).get("settings", {})
     required_keys_add = [
-        "jpy", "min_score", "min_order_amount",
-        "price_drop_percent", "sma_deviation", "rsi_threshold"
+        "jpy",
+        "min_score",
+        "min_order_amount",
+        "price_drop_percent",
+        "sma_deviation",
+        "rsi_threshold",
     ]
 
     for symbol, cfg in add_settings.items():
         if any(k not in cfg for k in required_keys_add):
             logger.error(f"add_purchase設定に必要な項目が不足 ({symbol}): {cfg}")
             sys.exit(1)
-        if (
-            cfg["jpy"] < 0 or
-            cfg["min_order_amount"] <= 0 or
-            cfg["min_score"] < 0
-        ):
+        if cfg["jpy"] < 0 or cfg["min_order_amount"] <= 0 or cfg["min_score"] < 0:
             logger.error(f"add_purchase設定エラー ({symbol}): {cfg}")
             sys.exit(1)
 
@@ -99,8 +95,4 @@ def generate_signature(timestamp, method, endpoint, body):
         raise ValueError("API_SECRET が未設定です")
 
     message = f"{timestamp}{method}{endpoint}{body}"
-    return hmac.new(
-        API_SECRET.encode(),
-        message.encode(),
-        hashlib.sha256
-    ).hexdigest()
+    return hmac.new(API_SECRET.encode(), message.encode(), hashlib.sha256).hexdigest()

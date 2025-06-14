@@ -4,6 +4,7 @@ import requests
 from email.mime.text import MIMEText
 from config import settings
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,7 +20,9 @@ def send_email(subject: str, body: str) -> None:
     email_to = os.getenv("MAIL_TO")
 
     if smtp_user is None or smtp_pass is None or email_to is None:
-        raise ValueError("MAIL_USER , MAIL_PASS または MAIL_TO が環境変数に設定されていません。")
+        raise ValueError(
+            "MAIL_USER , MAIL_PASS または MAIL_TO が環境変数に設定されていません。"
+        )
 
     msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject

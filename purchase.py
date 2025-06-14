@@ -62,16 +62,16 @@ def is_long_term_downtrend(symbol, db):
 
 
 # --- 購入結果処理 ---
-def handle_order_result(response, symbol, jpy, amount, current_price,
-                        purchase_type,  db):
+def handle_order_result(
+    response, symbol, jpy, amount, current_price, purchase_type, db
+):
     if response.status_code == 200:
         logger.info(f"注文完了: {symbol} {jpy} 円 = {amount}")
         try:
             send_slack(f"[BUY] {symbol}注文成功: {jpy}円 = {amount}")
         except Exception as e:
             logger.warning(f"Slack通知失敗: {e}")
-        db.record_purchase_history(symbol, jpy, amount, purchase_type,
-                                   current_price)
+        db.record_purchase_history(symbol, jpy, amount, purchase_type, current_price)
     else:
         logger.error(f"注文失敗: {response.status_code} {response.text}")
         try:
@@ -103,8 +103,7 @@ def execute_base_purchase(current_prices, db):
         current_price = current_prices[symbol]
 
         last_row = db.get_last_purchase(symbol)
-        last_time = datetime.datetime.fromisoformat(
-                        last_row[0]) if last_row else None
+        last_time = datetime.datetime.fromisoformat(last_row[0]) if last_row else None
         if not last_time or (now - last_time).days >= interval_days:
             min_unit = Decimal(str(conf["min_order_amount"]))
             amount = (Decimal(jpy) / current_price).quantize(
@@ -112,16 +111,18 @@ def execute_base_purchase(current_prices, db):
             )
 
             response = place_order(symbol, amount)
-            handle_order_result(response, symbol, jpy,
-                                amount, current_price, "base", db)
+            handle_order_result(
+                response, symbol, jpy, amount, current_price, "base", db
+            )
             db.record_price_history(symbol, current_price)
         else:
             logger.info(f"{symbol} 基本購入スキップ（{interval_days}日未満）")
 
 
 # --- 購入スコアを計算する ---
-def calculate_purchase_score(symbol, conf, current_price, last_price,
-                             avg_price, rsi, db):
+def calculate_purchase_score(
+    symbol, conf, current_price, last_price, avg_price, rsi, db
+):
     score = 0
     reasons = []
 
@@ -158,8 +159,7 @@ def calculate_purchase_score(symbol, conf, current_price, last_price,
 
 def evaluate_add_purchase(symbol, conf, current_price, db):
     last_row = db.get_last_purchase(symbol)
-    last_price = Decimal(
-        last_row[3]) if last_row and last_row[3] is not None else None
+    last_price = Decimal(last_row[3]) if last_row and last_row[3] is not None else None
     avg_price = get_30day_average(symbol, db)
     rsi = calculate_rsi(symbol, db)
 
@@ -173,19 +173,17 @@ def evaluate_add_purchase(symbol, conf, current_price, db):
 def perform_add_purchase(symbol, conf, current_price, db, score, reasons):
     jpy = conf.get("jpy", 0)
     min_unit = Decimal(str(conf["min_order_amount"]))
-    amount = (Decimal(jpy) / current_price).quantize(
-        min_unit, rounding=ROUND_DOWN
-        )
+    amount = (Decimal(jpy) / current_price).quantize(min_unit, rounding=ROUND_DOWN)
 
     try:
-        send_slack(f"[BUY] {symbol} 追加購入実行（スコア={score}）: {', '.join(reasons)}")
+        send_slack(
+            f"[BUY] {symbol} 追加購入実行（スコア={score}）: {', '.join(reasons)}"
+        )
     except Exception as e:
         logger.warning(f"Slack通知失敗: {e}")
 
     response = place_order(symbol, amount)
-    handle_order_result(
-        response, symbol, jpy, amount, current_price, "add", db
-    )
+    handle_order_result(response, symbol, jpy, amount, current_price, "add", db)
 
 
 def execute_add_purchase_flow(current_prices, db):
@@ -209,9 +207,7 @@ def execute_add_purchase_flow(current_prices, db):
             logger.info(f"{symbol} は jpy=0 のためスキップされました。")
             continue
 
-        should_buy, score, reasons = evaluate_add_purchase(
-            symbol, conf, price, db
-        )
+        should_buy, score, reasons = evaluate_add_purchase(symbol, conf, price, db)
         if should_buy:
             perform_add_purchase(symbol, conf, price, db, score, reasons)
         else:
