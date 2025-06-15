@@ -55,8 +55,8 @@ class DBManager:
                 conn.close()
 
     # --- 指定通貨の評価額推移を記録する ---
-    def record_price_history(self, symbol, current_price):
-        today = datetime.datetime.now().strftime("%Y-%m-%d")
+    def record_price_history(self, symbol, current_price, date=None):
+        date_str = date or datetime.datetime.now().strftime("%Y-%m-%d")
         conn = None
         try:
             conn = sqlite3.connect(self.db_path)
@@ -66,7 +66,7 @@ class DBManager:
                 INSERT OR REPLACE INTO price_history (symbol, date, price)
                 VALUES (?, ?, ?)
             """,
-                (symbol, today, str(current_price)),
+                (symbol, date_str, str(current_price)),
             )
             conn.commit()
         except Exception as e:

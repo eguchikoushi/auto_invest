@@ -2,7 +2,9 @@ import requests
 import time
 import json
 import logging
+import random
 from decimal import Decimal
+from datetime import datetime, timedelta
 from config import HEADERS, ORDER_URL, generate_signature
 
 logger = logging.getLogger(__name__)
@@ -68,3 +70,49 @@ def place_order(symbol, size: Decimal):
     except Exception as e:
         logger.error(f"注文送信エラー: {e}")
         raise
+
+
+# --- CoinGeckoから過去価格を取得 ---
+def get_historical_price(symbol, date_str):
+    coingecko_map = {
+        "BTC": "bitcoin",
+        "ETH": "ethereum",
+        "BCH": "bitcoin-cash",
+        "LTC": "litecoin",
+        "XRP": "ripple",
+        "ADA": "cardano",
+        "DOT": "polkadot",
+        "SOL": "solana",
+        "LINK": "chainlink",
+        "DOGE": "dogecoin",
+    }
+    cg_id = coingecko_map.get(symbol.upper())
+    if not cg_id:
+        raise ValueError(f"{symbol} はCoinGecko非対応です")
+
+    url = f"https://api.coingecko.com/api/v3/coins/{cg_id}/history?date={datetime.strptime(date_str, '%Y-%m-%d').strftime('%d-%m-%Y')}"  # noqa: E501
+    resp = requests.get(url, timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+    return Decimal(str(data["market_data"]["current_price"]["jpy"]))
+
+
+# --- 必要な履歴数に満たない場合、過去の価格を補完 ---
+def initialize_price_history_if_needed(symbol, db, required_days=15, force=False):
+    existing = db.get_price_history(symbol, required_days)
+    if len(existing) >= required_days and not force:
+        logger.info(f"{symbol} の履歴が既に {len(existing)} 件あるためスキップします。")
+        return
+
+    logger.info(
+        f"{symbol} の価格履歴が {required_days} 件未満です。過去価格を取得します。"
+    )
+    for i in range(required_days):
+        target_date = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+        try:
+            price = get_historical_price(symbol, target_date)
+            db.record_price_history(symbol, price, date=target_date)
+            logger.info(f"{symbol} {target_date} = {price} 円")
+            time.sleep(random.uniform(12.0, 15.0))
+        except Exception as e:
+            logger.warning(f"{target_date} の {symbol} 価格取得失敗: {e}")
