@@ -29,7 +29,11 @@ from config import settings, BASE_DIR, DATA_DIR  # noqa: E402
 from db_manager import DBManager  # noqa: E402
 from notify import send_email, send_slack  # noqa: E402
 from purchase import execute_base_purchase, execute_add_purchase_flow  # noqa: E402 E501
-from api_client import get_current_prices, get_jpy_balance  # noqa: E402
+from api_client import (  # noqa: E402
+    get_current_prices,
+    get_jpy_balance,
+    initialize_price_history_if_needed,
+)
 
 # --- 設定読み込みチェック ---
 if settings is None:
@@ -58,18 +62,36 @@ def main():
 
     db.ensure_initialized()
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=["basecheck", "dropcheck"], required=True)
+    parser.add_argument(
+        "--mode", choices=["basecheck", "dropcheck", "init-history"], required=True
+    )
+    parser.add_argument("--symbol", help="履歴補完する通貨シンボル（例: BTC）")
+    parser.add_argument("--force", action="store_true", help="履歴があっても強制再取得")
     args = parser.parse_args()
 
-    check_balance()
-
-    symbols = list(settings["base_purchase"]["settings"].keys())
-    current_prices = get_current_prices(symbols)
+    if args.mode == "basecheck" or args.mode == "dropcheck":
+        check_balance()
+        symbols = list(settings["base_purchase"]["settings"].keys())
+        current_prices = get_current_prices(symbols)
 
     if args.mode == "basecheck":
         execute_base_purchase(current_prices, db)
     elif args.mode == "dropcheck":
         execute_add_purchase_flow(current_prices, db)
+    elif args.mode == "init-history":
+        if args.symbol:
+            symbol = args.symbol.upper().strip()
+            if symbol not in settings["base_purchase"]["settings"]:
+                logger.error(f"{symbol} は設定に存在しません。")
+                sys.exit(1)
+            symbols = [symbol]
+        else:
+            symbols = list(settings["base_purchase"]["settings"].keys())
+
+        for symbol in symbols:
+            initialize_price_history_if_needed(
+                symbol, db, required_days=15, force=args.force
+            )
 
 
 if __name__ == "__main__":
