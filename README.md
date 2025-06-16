@@ -6,72 +6,81 @@ GMOコインのAPIを利用し、ビットコインなどの暗号資産を**定
 
 ## 🚀 機能概要
 
-- ✅ 通貨価格の自動取得（GMO API）
-- ✅ 定期購入（例：２日置き、週１回など）
-- ✅ RSI・平均乖離・価格下落判定による追加購入
-- ✅ 購入・エラー時のSlack通知
-- ✅ SQLiteによる履歴管理（価格・購入）
-- ✅ cron や タスクスケジューラでの定期実行対応
+* ✅ 通貨価格の自動取得（GMO API）
+* ✅ 定期購入（例：２日置き、週１回など）
+* ✅ RSI・平均乖離・価格下落判定による追加購入
+* ✅ 購入・エラー時のSlack通知
+* ✅ SQLiteによる履歴管理（価格・購入）
+* ✅ cron や タスクスケジューラでの定期実行対応
 
 ---
 
 ## 📦 必要環境
 
-- Python 3.10+
-- GMOコインのAPIキー
-- VPS（常時稼働が必要）またはローカル実行
-- SQLite3（標準装備）
+* Python 3.10+
+* GMOコインのAPIキー
+* VPS（常時稼働が必要）またはローカル実行
+* SQLite3（標準装備）
 
 ---
 
-# 🛠 セットアップ手順
+## 🛠 セットアップ
 
-## 1. リポジトリをクローン
+### 1. リポジトリをクローン
 
-   ```bash
-   git clone https://github.com/eguchikoushi/auto_invest.git
-   cd auto_invest
-   ```
+```bash
+git clone https://github.com/eguchikoushi/auto_invest.git
+cd auto_invest
+```
 
-## 2. 仮想環境の作成と依存インストール
+### 2. 仮想環境の作成と依存インストール
 
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Windows の場合: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+```bash
+python -m venv venv
+source venv/bin/activate  # Windows の場合: venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-## 3. `.env` を作成 (機密情報の登録)
+### 3. `.env` を作成（機密情報の登録）
 
-リポジトリにある `.env.example` をリネームして `.env` を作成してください。
+リポジトリにある `.env.example` をコピーして `.env` を作成し、以下のように設定してください：
 
-その後、APIキーやSlackのWebhook URL、メール情報を適切に書き換えて保存してください。
+```env
+API_KEY=  # GMOコインのAPIキー（現物取引用）
+API_SECRET=  # 上記APIキーに対応する秘密鍵
+SLACK_WEBHOOK=  # Slack通知用のWebhook URL（省略可）
+MAIL_USER=  # Gmailアドレス（SMTP送信用）
+MAIL_PASS=  # 上記Gmailのアプリパスワード
+MAIL_TO=  # 通知メールの送信先アドレス
+```
 
-## 4. `settings.json` を設定
-### base_purchase
-定期的な基本購入に関する設定です。
-   ```json
+---
+
+### 4. `settings.json` を設定
+
+#### base\_purchase（定期購入）
+
+```json
 "base_purchase": {
   "settings": {
     "BTC": {
       "jpy": 500,
       "interval_days": 1,
       "min_order_amount": 0.00001
-    },
-    ...
+    }
   }
 }
-   ```
-| キー名                | 説明                                        |
-| ------------------ | ----------------------------------------- |
-| `jpy`              | 1回あたりの購入金額（日本円）。例：500円分購入。                |
-| `interval_days`    | 購入間隔（日数）。例：1なら毎日、7なら週1回購入。                |
-| `min_order_amount` | GMOコインでの注文最小数量（通貨単位）。金額が小さすぎる場合はスキップされます。 |
+```
 
-### add_purchase
-相場下落時などの条件付き追加購入に関する設定です。
+| キー名                | 説明             |
+| ------------------ | -------------- |
+| `jpy`              | 1回あたりの購入金額（円）  |
+| `interval_days`    | 購入間隔（日数）       |
+| `min_order_amount` | 注文の最小単位（GMO仕様） |
 
-   ```json
+#### add\_purchase（条件付き追加購入）
+
+```json
 "add_purchase": {
   "enabled": true,
   "settings": {
@@ -82,78 +91,79 @@ GMOコインのAPIを利用し、ビットコインなどの暗号資産を**定
       "price_drop_percent": -3,
       "sma_deviation": -5,
       "rsi_threshold": 30
-    },
-    ...
+    }
   }
 }
-   ```
-| キー名                  | 説明                                  |
-| -------------------- | ----------------------------------- |
-| `enabled`            | 追加購入を有効にするか。`true` で有効。             |
-| `jpy`                | 追加購入時に使用する金額（日本円）。                  |
-| `min_score`          | スコア閾値。指定された複数条件のうち、いくつ満たせば購入するか。    |
-| `min_order_amount`   | GMOの注文最小数量（通貨単位）。                   |
-| `price_drop_percent` | 前回価格からの下落率（％）。例：`-3` は3%以上の下落で加点。   |
-| `sma_deviation`      | 現在価格と移動平均（SMA）の乖離率（％）。割安圏をマイナス値で指定。 |
-| `rsi_threshold`      | RSI（相対力指数）がこの値を下回ると加点対象。            |
+```
 
----
+| キー名                  | 説明                                                                              |
+| -------------------- | ------------------------------------------------------------------------------- |
+| `enabled`            | trueで有効化                                                                        |
+| `jpy`                | 追加購入に使用する金額（円）                                                                  |
+| `min_score`          | 評価条件（価格下落・SMA乖離・RSI）をいくつ満たしたら購入するかを判定するためのスコア閾値。 |
+| `price_drop_percent` | 前回価格からの下落率の閾値（%）                                                   |
+| `sma_deviation`      | 30日平均とのSMA乖離率の閾値（%）                                                   |
+| `rsi_threshold`      | RSIの閾値                                                               |
+| `min_order_amount`   | 注文の最小単位（GMO仕様）                                                                  |
 
-### mail
-   ```json
+#### 通知・残高設定
+
+```json
 "mail": {
   "enabled": true
-}
-   ```
-| キー名       | 説明                             |
-| --------- | ------------------------------ |
-| `enabled` | メール通知を有効にするかどうか。`true` で通知を送信。 |
+},
+"balance_warning_threshold_jpy": 99999
+```
 
-### balance_warning_threshold_jpy
-   ```json
-   "balance_warning_threshold_jpy": 99999
+| キー名                             | 説明                            |
+| ------------------------------- | ----------------------------- |
+| `enabled`                       | メール通知を有効にするかどうか（true で通知送信）   |
+| `balance_warning_threshold_jpy` | 日本円残高がこの金額を下回るとSlack/メールで警告通知 |
 
-   ```
-| キー名                             | 説明                           |
-| ------------------------------- | ---------------------------- |
-| `balance_warning_threshold_jpy` | 日本円残高がこの金額を下回った場合、警告通知を行います。 |
+---
 
-## 5. 実行方法
+## ▶️ 実行例
 
 ```bash
-python main.py --mode=basecheck   # 定期購入
-python main.py --mode=dropcheck   # 価格下落時に追加購入
+python main.py --mode=basecheck         # 定期購入
+python main.py --mode=dropcheck         # 条件付き追加購入
+python main.py --mode=init-history      # すべての通貨の価格履歴を初期化（RSI用）
+python main.py --mode=init-history --symbol=BTC  # 指定通貨のみ初期化
 ```
 
 ---
 
-## 6. 自動実行（VPS）
-例：每日朝9時に基本購入し、5分後に追加購入判定。
+## ⏱ 自動実行（cron 例）
 
-cron に以下のように登録します。
-
-
-```
+```cron
+# ご自身の環境に合わせてパスを調整してください
 0 9 * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=basecheck >> cron.log 2>&1
 5 9 * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=dropcheck >> cron.log 2>&1
 ```
 
-## 7.  通知について
-SlackのWebhook URLを .env に記載すれば通知可能です
+---
 
-失敗時・成功時にSlackにメッセージが送信されます
+## 🔔 通知について
 
-## 8. 注意点
-GMOコインの注文は最小単位があるため、設定金額に注意。
+`.env` に Slack Webhook を設定すると、以下のような通知が届きます：
 
-初期14日間はRSIが正しく計算されません。
-
-本番注文が実行されます。自己責任で使用してください。
-
+* 成功時：`[BUY] BTC注文成功: 1000円 = 0.00005BTC`
+* 失敗時：`[ERROR] BTC注文失敗: 不正な数量`
+* 警告時：`日本円残高がしきい値を下回りました: 1000円`
 
 ---
 
-## ライセンス
+## ⚠️ 注意事項
+
+| 内容         | 説明                                                                                                                                 |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 本番注文       | 実際にGMOコインで注文が発行されます。自己責任でご利用ください                                                                                                   |
+| 最小単位       | 設定金額（jpy）が最小注文量に満たない場合はスキップされます                                                                                                    |
+| RSI用の履歴初期化 | 初回実行時はRSI計算用の過去14日分の価格履歴が不足しています。`--mode=init-history` を使って補完してください。CoinGeckoから1日ずつ取得するため、**10通貨 × 15日 × 最大15秒 = 約25分**かかることがあります。 |
+
+---
+
+## 🪪 ライセンス
 
 このプログラムは、クリエイティブ・コモンズ 表示 - 非営利 4.0 国際 ライセンス (CC BY-NC 4.0) のもとで提供されます。
 
