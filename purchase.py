@@ -158,8 +158,10 @@ def calculate_purchase_score(
 
 
 def evaluate_add_purchase(symbol, conf, current_price, db):
-    last_row = db.get_last_purchase(symbol)
-    last_price = Decimal(last_row[3]) if last_row and last_row[3] is not None else None
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    rows = db.get_purchase_history(symbol, limit=1, before_date=today)
+    last_price = Decimal(rows[0][3]) if rows else None
+
     avg_price = get_30day_average(symbol, db)
     rsi = calculate_rsi(symbol, db)
 
