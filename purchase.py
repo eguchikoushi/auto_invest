@@ -128,31 +128,35 @@ def calculate_purchase_score(
 
     if last_price:
         change = (current_price - last_price) / last_price * Decimal("100")
-        reasons.append(f"前回比={change:.2f}%")
         if change <= Decimal(conf.get("price_drop_percent", -3)):
             score += 1
+            reasons.append(f"前回比 {change:.2f}% (+1)")
+        else:
+            reasons.append(f"前回比 {change:.2f}% (±0)")
     else:
         reasons.append("前回価格なし")
 
     if avg_price:
         sma_dev = (current_price - avg_price) / avg_price * Decimal("100")
-        if sma_dev <= Decimal(conf.get("sma_deviation", -5)):
+        passed = sma_dev <= Decimal(conf.get("sma_deviation", -5))
+        reasons.append(f"SMA乖離 {sma_dev:.2f}% ({'+1' if passed else '±0'})")
+        if passed:
             score += 1
-            reasons.append("30日平均より下落")
 
     if rsi is not None:
         threshold = Decimal(conf.get("rsi_threshold", 30))
-        if rsi <= threshold:
+        passed = rsi <= threshold
+        reasons.append(f"RSI {rsi} ≤ {threshold} ({'+1' if passed else '±0'})")
+        if passed:
             score += 1
-            reasons.append(f"RSI={rsi}")
-        else:
-            reasons.append(f"RSI高={rsi}")
     else:
         reasons.append("RSI未取得")
 
     if is_long_term_downtrend(symbol, db):
         score -= 1
-        reasons.append("長期トレンド悪化")
+        reasons.append("長期トレンド悪化（-1）")
+    else:
+        reasons.append("長期トレンド良好（±0）")
 
     return score, reasons
 
