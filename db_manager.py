@@ -133,41 +133,63 @@ class DBManager:
             if conn:
                 conn.close()
 
+    # --- 指定通貨の購入履歴を取得する ---
+    def get_purchase_history(
+        self, symbol, limit=30, before_date=None, purchase_type=None
+    ):
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+
+            query = """
+                SELECT date, crypto_amount, jpy_amount, price
+                FROM purchase_history
+                WHERE symbol = ?
+            """
+            params = [symbol]
+
+            if purchase_type:
+                query += " AND purchase_type = ?"
+                params.append(purchase_type)
+
+            if before_date:
+                query += " AND date < ?"
+                params.append(before_date)
+
+            query += " ORDER BY date DESC LIMIT ?"
+            params.append(limit)
+
+            cur.execute(query, params)
+            return cur.fetchall()
+        except Exception as e:
+            handle_db_error(e, context="購入履歴取得処理")
+            return []
+        finally:
+            if conn:
+                conn.close()
+
     # --- 最新の購入レコードを取得 ---
     def get_last_purchase(self, symbol, purchase_type=None):
         conn = None
         try:
             conn = sqlite3.connect(self.db_path)
             cur = conn.cursor()
+
+            query = """
+                SELECT date, crypto_amount, jpy_amount, price
+                FROM purchase_history
+                WHERE symbol = ?
+            """
+            params = [symbol]
+
             if purchase_type:
-                cur.execute(
-                    """
-                    SELECT
-                        date,
-                        crypto_amount,
-                        jpy_amount,
-                        price
-                    FROM  purchase_history
-                    WHERE symbol = ?         -- 通貨シンボル
-                      AND purchase_type = ?  -- 基本購入 or 追加購入
-                    ORDER BY date DESC LIMIT 1
-                    """,
-                    (symbol, purchase_type),
-                )
-            else:
-                cur.execute(
-                    """
-                    SELECT
-                        date,
-                        crypto_amount,
-                        jpy_amount,
-                        price
-                    FROM  purchase_history
-                    WHERE symbol = ?         -- 通貨シンボル
-                    ORDER BY date DESC LIMIT 1
-                    """,
-                    (symbol,),
-                )
+                query += " AND purchase_type = ?"
+                params.append(purchase_type)
+
+            query += " ORDER BY date DESC LIMIT 1"
+
+            cur.execute(query, params)
             return cur.fetchone()
         except Exception as e:
             handle_db_error(e, context="最新購入取得処理")
