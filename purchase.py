@@ -124,6 +124,8 @@ def calculate_purchase_score(
     symbol, conf, current_price, last_price, avg_price, rsi, db
 ):
     score = 0
+    max_score = 3  # 前回比, SMA乖離, RSI の3項目
+    min_score = conf.get("min_score", 2)  # 購入判定に使われるしきい値
     reasons = []
 
     if last_price:
@@ -158,6 +160,8 @@ def calculate_purchase_score(
     else:
         reasons.append("長期トレンド良好（±0）")
 
+    reasons.insert(0, f"スコア={score}/{max_score}（条件:{min_score}以上）")
+
     return score, reasons
 
 
@@ -173,18 +177,16 @@ def evaluate_add_purchase(symbol, conf, current_price, db):
         symbol, conf, current_price, last_price, avg_price, rsi, db
     )
     should_buy = score >= conf.get("min_score", 2)
-    return should_buy, score, reasons
+    return should_buy, reasons
 
 
-def perform_add_purchase(symbol, conf, current_price, db, score, reasons):
+def perform_add_purchase(symbol, conf, current_price, db, reasons):
     jpy = conf.get("jpy", 0)
     min_unit = Decimal(str(conf["min_order_amount"]))
     amount = (Decimal(jpy) / current_price).quantize(min_unit, rounding=ROUND_DOWN)
 
     try:
-        send_slack(
-            f"[BUY] {symbol} 追加購入実行（スコア={score}）: {', '.join(reasons)}"
-        )
+        send_slack(f"[BUY] {symbol} 追加購入実行: {', '.join(reasons)}")
     except Exception as e:
         logger.warning(f"Slack通知失敗: {e}")
 
@@ -213,10 +215,8 @@ def execute_add_purchase_flow(current_prices, db):
             logger.info(f"{symbol} は jpy=0 のためスキップされました。")
             continue
 
-        should_buy, score, reasons = evaluate_add_purchase(symbol, conf, price, db)
+        should_buy, reasons = evaluate_add_purchase(symbol, conf, price, db)
         if should_buy:
-            perform_add_purchase(symbol, conf, price, db, score, reasons)
+            perform_add_purchase(symbol, conf, price, db, reasons)
         else:
-            logger.info(
-                f"{symbol} 追加購入条件を満たしません（スコア={score}, {', '.join(reasons)}）"
-            )
+            logger.info(f"{symbol} 追加購入条件を満たしません（{', '.join(reasons)}）")
