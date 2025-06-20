@@ -104,7 +104,7 @@ def execute_base_purchase(current_prices, db):
 
         last_row = db.get_last_purchase(symbol)
         last_time = datetime.datetime.fromisoformat(last_row[0]) if last_row else None
-        if not last_time or (now - last_time).days >= interval_days:
+        if not last_time or (now.date() - last_time.date()).days >= interval_days:
             min_unit = Decimal(str(conf["min_order_amount"]))
             amount = (Decimal(jpy) / current_price).quantize(
                 min_unit, rounding=ROUND_DOWN
