@@ -81,7 +81,7 @@ def handle_order_result(
 
 
 # --- 基本購入を実行する ---
-def execute_base_purchase(current_prices, db):
+def execute_base_purchase(current_prices, db, dry_run=False):
     if settings is None:
         logger.error("設定が未設定のため、基本購入をスキップします")
         return
@@ -109,6 +109,13 @@ def execute_base_purchase(current_prices, db):
             amount = (Decimal(jpy) / current_price).quantize(
                 min_unit, rounding=ROUND_DOWN
             )
+            if dry_run:
+                logger.info(f"[DRY-RUN] {symbol} テスト注文: {jpy}円 = {amount}")
+                try:
+                    send_slack(f"[DRY-RUN] {symbol} テスト注文: {jpy}円 = {amount}")
+                except Exception as e:
+                    logger.warning(f"Slack通知失敗: {e}")
+                continue
 
             response = place_order(symbol, amount)
             handle_order_result(
@@ -165,7 +172,7 @@ def calculate_purchase_score(
     return score, reasons
 
 
-def evaluate_add_purchase(symbol, conf, current_price, db):
+def evaluate_add_purchase(symbol, conf, current_price, db, dry_run=False):
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     rows = db.get_purchase_history(symbol, limit=1, before_date=today)
     last_price = Decimal(rows[0][3]) if rows else None
@@ -180,21 +187,30 @@ def evaluate_add_purchase(symbol, conf, current_price, db):
     return should_buy, reasons
 
 
-def perform_add_purchase(symbol, conf, current_price, db, reasons):
+def perform_add_purchase(symbol, conf, current_price, db, reasons, dry_run=False):
     jpy = conf.get("jpy", 0)
     min_unit = Decimal(str(conf["min_order_amount"]))
     amount = (Decimal(jpy) / current_price).quantize(min_unit, rounding=ROUND_DOWN)
 
     try:
-        send_slack(f"[BUY] {symbol} 追加購入実行: {', '.join(reasons)}")
+        prefix = "[DRY-RUN] " if dry_run else "[BUY] "
+        send_slack(f"{prefix}{symbol} 追加購入実行: {', '.join(reasons)}")
     except Exception as e:
         logger.warning(f"Slack通知失敗: {e}")
+
+    if dry_run:
+        logger.info(f"[DRY-RUN] {symbol} テスト注文: {jpy}円 = {amount}")
+        try:
+            send_slack(f"[DRY-RUN] {symbol} テスト注文: {jpy}円 = {amount}")
+        except Exception as e:
+            logger.warning(f"Slack通知失敗: {e}")
+        return
 
     response = place_order(symbol, amount)
     handle_order_result(response, symbol, jpy, amount, current_price, "add", db)
 
 
-def execute_add_purchase_flow(current_prices, db):
+def execute_add_purchase_flow(current_prices, db, dry_run=False):
     if not settings or not settings["add_purchase"].get("enabled", False):
         logger.info("追加購入は設定で無効になっています。")
         return
@@ -217,6 +233,6 @@ def execute_add_purchase_flow(current_prices, db):
 
         should_buy, reasons = evaluate_add_purchase(symbol, conf, price, db)
         if should_buy:
-            perform_add_purchase(symbol, conf, price, db, reasons)
+            perform_add_purchase(symbol, conf, price, db, reasons, dry_run=dry_run)
         else:
             logger.info(f"{symbol} 追加購入条件を満たしません（{', '.join(reasons)}）")

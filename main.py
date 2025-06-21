@@ -67,6 +67,9 @@ def main():
     )
     parser.add_argument("--symbol", help="履歴補完する通貨シンボル（例: BTC）")
     parser.add_argument("--force", action="store_true", help="履歴があっても強制再取得")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="テストモード（注文を送信しない）"
+    )
     args = parser.parse_args()
 
     if args.mode == "basecheck" or args.mode == "dropcheck":
@@ -75,9 +78,9 @@ def main():
         current_prices = get_current_prices(symbols)
 
     if args.mode == "basecheck":
-        execute_base_purchase(current_prices, db)
+        execute_base_purchase(current_prices, db, dry_run=args.dry_run)
     elif args.mode == "dropcheck":
-        execute_add_purchase_flow(current_prices, db)
+        execute_add_purchase_flow(current_prices, db, dry_run=args.dry_run)
     elif args.mode == "init-history":
         if args.symbol:
             symbol = args.symbol.upper().strip()
