@@ -129,6 +129,8 @@ python main.py --mode=basecheck         # 定期購入
 python main.py --mode=dropcheck         # 条件付き追加購入
 python main.py --mode=init-history      # すべての通貨の価格履歴を初期化（RSI用）
 python main.py --mode=init-history --symbol=BTC  # 指定通貨のみ初期化
+python main.py --mode=basecheck --dry-run     # テスト実行：定期購入のシミュレーション（注文なし）
+python main.py --mode=dropcheck --dry-run     # テスト実行：条件付き追加購入のシミュレーション（注文なし）
 ```
 
 ---
