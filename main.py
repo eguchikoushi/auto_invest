@@ -57,13 +57,27 @@ def check_balance():
             logger.warning(f"メール通知失敗: {e}")
 
 
+def update_all_price_history(db):
+    symbols = list(settings["base_purchase"]["settings"].keys())
+    current_prices = get_current_prices(symbols)
+
+    for symbol, price in current_prices.items():
+        if price is None:
+            logger.warning(f"{symbol} の価格取得に失敗しました")
+            continue
+        db.record_price_history(symbol, price)
+        logger.info(f"{symbol} の価格を記録: {price}円")
+
+
 def main():
     db = DBManager(data_dir=DATA_DIR)
 
     db.ensure_initialized()
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--mode", choices=["basecheck", "dropcheck", "init-history"], required=True
+        "--mode",
+        choices=["basecheck", "dropcheck", "init-history", "record-price"],
+        required=True,
     )
     parser.add_argument("--symbol", help="履歴補完する通貨シンボル（例: BTC）")
     parser.add_argument("--force", action="store_true", help="履歴があっても強制再取得")
@@ -95,6 +109,8 @@ def main():
             initialize_price_history_if_needed(
                 symbol, db, required_days=15, force=args.force
             )
+    elif args.mode == "record-price":
+        update_all_price_history(db)
 
 
 if __name__ == "__main__":
