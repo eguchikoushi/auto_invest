@@ -121,7 +121,6 @@ def execute_base_purchase(current_prices, db, dry_run=False):
             handle_order_result(
                 response, symbol, jpy, amount, current_price, "base", db
             )
-            db.record_price_history(symbol, current_price)
         else:
             logger.info(f"{symbol} 基本購入スキップ（{interval_days}日未満）")
 
@@ -222,9 +221,6 @@ def execute_add_purchase_flow(current_prices, db, dry_run=False):
         if price is None:
             logger.info(f"{symbol} の価格取得に失敗したためスキップします。")
             continue
-
-        # --- 価格記録 ---
-        db.record_price_history(symbol, price)
 
         jpy = conf.get("jpy", 0)
         if jpy <= 0:
