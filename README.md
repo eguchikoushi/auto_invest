@@ -12,6 +12,7 @@ GMOコインのAPIを利用し、ビットコインなどの暗号資産を**定
 * ✅ 購入・エラー時のSlack通知
 * ✅ SQLiteによる履歴管理（価格・購入）
 * ✅ cron や タスクスケジューラでの定期実行対応
+* ✅ record-priceモードによる価格記録（日足の統一記録に利用）
 
 ---
 
@@ -131,6 +132,7 @@ python main.py --mode=init-history      # すべての通貨の価格履歴を�
 python main.py --mode=init-history --symbol=BTC  # 指定通貨のみ初期化
 python main.py --mode=basecheck --dry-run     # テスト実行：定期購入のシミュレーション（注文なし）
 python main.py --mode=dropcheck --dry-run     # テスト実行：条件付き追加購入のシミュレーション（注文なし）
+python main.py --mode=record-price            # 現在価格のみを記録（評価用データ）
 ```
 
 ---
@@ -139,8 +141,9 @@ python main.py --mode=dropcheck --dry-run     # テスト実行：条件付き�
 
 ```cron
 # ご自身の環境に合わせてパスを調整してください
-0 9 * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=basecheck >> cron.log 2>&1
-5 9 * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=dropcheck >> cron.log 2>&1
+0 9 * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=record-price >> cron_record.log 2>&1
+5 9 * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=basecheck >> cron.log 2>&1
+10 9 * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=dropcheck >> cron.log 2>&1
 ```
 
 ---
