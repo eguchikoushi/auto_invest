@@ -66,7 +66,7 @@ def update_all_price_history(db):
             logger.warning(f"{symbol} の価格取得に失敗しました")
             continue
         db.record_price_history(symbol, price)
-        logger.info(f"{symbol} の価格を記録: {price}円")
+        logger.info(f"{symbol} 現在価格を記録: {price} 円")
 
 
 def main():
@@ -76,7 +76,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mode",
-        choices=["basecheck", "dropcheck", "init-history", "record-price"],
+        choices=["record-price", "basecheck", "dropcheck", "init-history"],
         required=True,
     )
     parser.add_argument("--symbol", help="履歴補完する通貨シンボル（例: BTC）")
