@@ -47,6 +47,17 @@ class DBManager:
             """
             )
 
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS short_term_price (
+                    symbol TEXT NOT NULL,
+                    timestamp TEXT NOT NULL,
+                    price TEXT NOT NULL,
+                    PRIMARY KEY (symbol, timestamp)
+                )
+                """
+            )
+
             conn.commit()
         except Exception as e:
             handle_db_error(e, context="DB初期化処理")
@@ -93,6 +104,26 @@ class DBManager:
         except Exception as e:
             handle_db_error(e, context="評価額推移取得処理")
             return []
+        finally:
+            if conn:
+                conn.close()
+
+    def record_short_term_price(self, symbol, price, timestamp=None):
+        timestamp = timestamp or datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO short_term_price (symbol, timestamp, price)
+                VALUES (?, ?, ?)
+                """,
+                (symbol, timestamp, str(price)),
+            )
+            conn.commit()
+        except Exception as e:
+            handle_db_error(e, context="短期価格記録処理")
         finally:
             if conn:
                 conn.close()

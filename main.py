@@ -69,6 +69,18 @@ def update_all_price_history(db):
         logger.info(f"{symbol} 現在価格を記録: {price} 円")
 
 
+def save_all_short_term_prices(db):
+    symbols = list(settings["base_purchase"]["settings"].keys())
+    current_prices = get_current_prices(symbols)
+
+    for symbol, price in current_prices.items():
+        if price is None:
+            logger.warning(f"{symbol} の価格取得に失敗しました")
+            continue
+        db.record_short_term_price(symbol, price)
+        logger.info(f"{symbol} 短期価格を記録: {price}円")
+
+
 def main():
     db = DBManager(data_dir=DATA_DIR)
 
@@ -76,7 +88,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mode",
-        choices=["record-price", "basecheck", "dropcheck", "init-history"],
+        choices=[
+            "record-price",
+            "record-shortterm",
+            "basecheck",
+            "dropcheck",
+            "init-history",
+        ],
         required=True,
     )
     parser.add_argument("--symbol", help="履歴補完する通貨シンボル（例: BTC）")
@@ -111,6 +129,8 @@ def main():
             )
     elif args.mode == "record-price":
         update_all_price_history(db)
+    elif args.mode == "record-shortterm":
+        save_all_short_term_prices(db)
 
 
 if __name__ == "__main__":
