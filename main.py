@@ -81,6 +81,39 @@ def save_all_short_term_prices(db):
         logger.info(f"{symbol} 短期価格を記録: {price}円")
 
 
+def check_sudden_price_drop(db):
+    alert_cfg = settings.get("alertcheck", {})
+    if not alert_cfg.get("enabled", False):
+        logger.info("alertcheck は設定で無効化されています。")
+        return
+
+    threshold = Decimal(str(alert_cfg.get("threshold_percent", -5)))
+    symbols = alert_cfg.get("enabled_symbols") or list(
+        settings["base_purchase"]["settings"].keys()
+    )
+
+    for symbol in symbols:
+        rows = db.get_latest_short_term_prices(symbol, limit=2)
+
+        if len(rows) < 2:
+            logger.info(f"{symbol} の比較用データが不足しているためスキップ")
+            continue
+
+        old_price = rows[0][1]
+        new_price = rows[1][1]
+        change = ((new_price - old_price) / old_price) * Decimal("100")
+
+        logger.info(f"{symbol} 急落判定: {change:.2f}%（閾値: {threshold}%）")
+
+        if change <= threshold:
+            msg = f"[ALERT] {symbol} が急落: {change:.2f}%（{old_price} → {new_price}）"
+            logger.warning(msg)
+            try:
+                send_slack(msg)
+            except Exception as e:
+                logger.warning(f"Slack通知失敗: {e}")
+
+
 def main():
     db = DBManager(data_dir=DATA_DIR)
 
@@ -94,6 +127,7 @@ def main():
             "basecheck",
             "dropcheck",
             "init-history",
+            "alertcheck",
         ],
         required=True,
     )
@@ -131,6 +165,8 @@ def main():
         update_all_price_history(db)
     elif args.mode == "record-shortterm":
         save_all_short_term_prices(db)
+    elif args.mode == "alertcheck":
+        check_sudden_price_drop(db)
 
 
 if __name__ == "__main__":
