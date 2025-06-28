@@ -229,6 +229,29 @@ class DBManager:
             if conn:
                 conn.close()
 
+    # --- 最新の短期価格レコードを取得 ---
+    def get_latest_short_term_prices(self, symbol, limit=2):
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT timestamp, price FROM short_term_price
+                WHERE symbol = ?
+                ORDER BY timestamp DESC LIMIT ?
+                """,
+                (symbol, limit),
+            )
+            rows = cur.fetchall()
+            return [(r[0], Decimal(r[1])) for r in reversed(rows)]
+        except Exception as e:
+            handle_db_error(e, context="短期価格（最新）取得処理")
+            return []
+        finally:
+            if conn:
+                conn.close()
+
 
 # --- エラーハンドラ ---
 def handle_db_error(e, context=""):
