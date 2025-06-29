@@ -121,6 +121,20 @@ MAIL_TO=  # 通知メールの送信先アドレス
 | `enabled`                       | メール通知を有効にするかどうか（true で通知送信）   |
 | `balance_warning_threshold_jpy` | 日本円残高がこの金額を下回るとSlack/メールで警告通知 |
 
+#### alertcheck（急落検知）
+```json
+"alertcheck": {
+  "enabled": true,
+  "threshold_percent": -5,
+  "enabled_symbols": ["BTC", "ETH"]
+}
+```
+| キー名                 | 説明                                            |
+| ------------------- | --------------------------------------------- |
+| `enabled`           | `true` で急落検知モードを有効化                           |
+| `threshold_percent` | 下落率の閾値（%）。この値以上に下落していればSlack通知を送信             |
+| `enabled_symbols`   | 検知対象とする通貨シンボルの配列（省略時は base\_purchase の全通貨が対象） |
+
 ---
 
 ## ▶️ 実行例
@@ -133,6 +147,9 @@ python main.py --mode=init-history --symbol=BTC  # 指定通貨のみ初期化
 python main.py --mode=basecheck --dry-run     # テスト実行：定期購入のシミュレーション（注文なし）
 python main.py --mode=dropcheck --dry-run     # テスト実行：条件付き追加購入のシミュレーション（注文なし）
 python main.py --mode=record-price            # 現在価格のみを記録（評価用データ）
+python main.py --mode=record-shortterm    # 現在価格を短期テーブルに記録（15分間隔などで運用）
+python main.py --mode=alertcheck        # 急落検知を実行（Slack通知あり）
+
 ```
 
 ---
@@ -140,10 +157,21 @@ python main.py --mode=record-price            # 現在価格のみを記録（�
 ## ⏱ 自動実行（cron 例）
 
 ```cron
-# ご自身の環境に合わせてパスを調整してください
+# --- 日次記録（毎朝9:00） ---
 0 9 * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=record-price >> cron_record.log 2>&1
+
+# --- 定期購入（基本購入）9:05に実行 ---
 5 9 * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=basecheck >> cron.log 2>&1
+
+# --- 条件付き追加購入（RSIや価格下落による加点）9:10に実行 ---
 10 9 * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=dropcheck >> cron.log 2>&1
+
+# --- 短期価格の定期記録（毎15分）---
+*/15 * * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=record-shortterm >> cron_shortterm.log 2>&1
+
+# --- 急落検知（record-shorttermの直後）---
+1-59/15 * * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=alertcheck >> cron_alert.log 2>&1
+
 ```
 
 ---
@@ -165,6 +193,8 @@ python main.py --mode=record-price            # 現在価格のみを記録（�
 | 本番注文       | 実際にGMOコインで注文が発行されます。自己責任でご利用ください                                                                                                   |
 | 最小単位       | 設定金額（jpy）が最小注文量に満たない場合はスキップされます                                                                                                    |
 | RSI用の履歴初期化 | 初回実行時はRSI計算用の過去14日分の価格履歴が不足しています。`--mode=init-history` を使って補完してください。CoinGeckoから1日ずつ取得するため、**10通貨 × 15日 × 最大15秒 = 約25分**かかることがあります。 |
+| 急落検知と記録頻度 | `record-shortterm` で記録される最新2件の価格を使って下落率を評価します。記録間隔（例：15分）に応じた評価になります。 |
+
 
 ---
 
