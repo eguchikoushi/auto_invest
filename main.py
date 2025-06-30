@@ -81,13 +81,14 @@ def save_all_short_term_prices(db):
         logger.info(f"{symbol} 短期価格を記録: {price}円")
 
 
-def check_sudden_price_drop(db):
+def check_sudden_price_change(db):
     alert_cfg = settings.get("alertcheck", {})
     if not alert_cfg.get("enabled", False):
         logger.info("alertcheck は設定で無効化されています。")
         return
 
-    threshold = Decimal(str(alert_cfg.get("threshold_percent", -5)))
+    drop_threshold = Decimal(str(alert_cfg.get("drop_threshold_percent", -5)))
+    rise_threshold = Decimal(str(alert_cfg.get("rise_threshold_percent", 5)))
     symbols = alert_cfg.get("enabled_symbols") or list(
         settings["base_purchase"]["settings"].keys()
     )
@@ -103,10 +104,20 @@ def check_sudden_price_drop(db):
         new_price = rows[1][1]
         change = ((new_price - old_price) / old_price) * Decimal("100")
 
-        logger.info(f"{symbol} 急落判定: {change:.2f}%（閾値: {threshold}%）")
+        logger.info(f"{symbol} 急落・急騰検知を実行")
 
-        if change <= threshold:
+        if change <= drop_threshold:
             msg = f"[ALERT] {symbol} が急落: {change:.2f}%（{old_price} → {new_price}）"
+            logger.warning(msg)
+            try:
+                send_slack(msg)
+            except Exception as e:
+                logger.warning(f"Slack通知失敗: {e}")
+
+        elif change >= rise_threshold:
+            msg = (
+                f"[ALERT] {symbol} が急騰: +{change:.2f}%（{old_price} → {new_price}）"
+            )
             logger.warning(msg)
             try:
                 send_slack(msg)
@@ -166,7 +177,7 @@ def main():
     elif args.mode == "record-shortterm":
         save_all_short_term_prices(db)
     elif args.mode == "alertcheck":
-        check_sudden_price_drop(db)
+        check_sudden_price_change(db)
 
 
 if __name__ == "__main__":
