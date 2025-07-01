@@ -12,7 +12,7 @@ GMOコインのAPIを利用し、ビットコインなどの暗号資産を**定
 * ✅ 購入・エラー時のSlack通知
 * ✅ SQLiteによる履歴管理（価格・購入）
 * ✅ cron や タスクスケジューラでの定期実行対応
-* ✅ record-priceモードによる価格記録（日足の統一記録に利用）
+* ✅ 急騰・急落検知
 
 ---
 
@@ -125,15 +125,17 @@ MAIL_TO=  # 通知メールの送信先アドレス
 ```json
 "alertcheck": {
   "enabled": true,
-  "threshold_percent": -5,
+  "drop_threshold_percent": -5,
+  "rise_threshold_percent": 5,
   "enabled_symbols": ["BTC", "ETH"]
 }
 ```
-| キー名                 | 説明                                            |
-| ------------------- | --------------------------------------------- |
-| `enabled`           | `true` で急落検知モードを有効化                           |
-| `threshold_percent` | 下落率の閾値（%）。この値以上に下落していればSlack通知を送信             |
-| `enabled_symbols`   | 検知対象とする通貨シンボルの配列（省略時は base\_purchase の全通貨が対象） |
+| キー名                      | 説明                         |
+| ------------------------ | -------------------------- |
+| `enabled`                | trueで有効化                   |
+| `drop_threshold_percent` | 急落とみなす下落率（%）               |
+| `rise_threshold_percent` | 急騰とみなす上昇率（%）               |
+| `enabled_symbols`        | 判定対象とする通貨シンボル |
 
 ---
 
@@ -169,7 +171,7 @@ python main.py --mode=alertcheck        # 急落検知を実行（Slack通知あ
 # --- 短期価格の定期記録（毎15分）---
 */15 * * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=record-shortterm >> cron_shortterm.log 2>&1
 
-# --- 急落検知（record-shorttermの直後）---
+# --- 急騰・急落検知（record-shorttermの直後）---
 1-59/15 * * * * /home/username/venv/bin/python /home/username/auto_invest/main.py --mode=alertcheck >> cron_alert.log 2>&1
 
 ```
@@ -183,6 +185,8 @@ python main.py --mode=alertcheck        # 急落検知を実行（Slack通知あ
 * 成功時：`[BUY] BTC注文成功: 1000円 = 0.00005BTC`
 * 失敗時：`[ERROR] BTC注文失敗: 不正な数量`
 * 警告時：`日本円残高がしきい値を下回りました: 1000円`
+* 急騰時：`[ALERT] BTC が急騰: +6.12%`
+* 急落時：`[ALERT] BTC が急落: -5.23%`
 
 ---
 
@@ -193,7 +197,7 @@ python main.py --mode=alertcheck        # 急落検知を実行（Slack通知あ
 | 本番注文       | 実際にGMOコインで注文が発行されます。自己責任でご利用ください                                                                                                   |
 | 最小単位       | 設定金額（jpy）が最小注文量に満たない場合はスキップされます                                                                                                    |
 | RSI用の履歴初期化 | 初回実行時はRSI計算用の過去14日分の価格履歴が不足しています。`--mode=init-history` を使って補完してください。CoinGeckoから1日ずつ取得するため、**10通貨 × 15日 × 最大15秒 = 約25分**かかることがあります。 |
-| 急落検知と記録頻度 | `record-shortterm` で記録される最新2件の価格を使って下落率を評価します。記録間隔（例：15分）に応じた評価になります。 |
+| 急騰・急落検知 | `record-shortterm` で記録される最新2件の価格を使って変動率を評価します。記録間隔（例：15分）に応じた評価になります。 |
 
 
 ---
