@@ -3,7 +3,7 @@ import datetime
 from decimal import Decimal, ROUND_DOWN
 from config import settings
 from notify import send_slack
-from api_client import place_order
+from api_client import place_order, get_executions_by_order
 
 logger = logging.getLogger(__name__)
 
@@ -63,15 +63,40 @@ def is_long_term_downtrend(symbol, db):
 
 # --- 購入結果処理 ---
 def handle_order_result(
-    response, symbol, jpy, amount, current_price, purchase_type, db
+    response, order_id, symbol, jpy, amount, current_price, purchase_type, db
 ):
+    executed_price = None
+    executed_time = None
+
     if response.status_code == 200:
+        # 約定情報取得を試みる
+        if order_id:
+            executions = get_executions_by_order(order_id)
+            if executions:
+                try:
+                    total = sum(
+                        Decimal(e["price"]) * Decimal(e["size"]) for e in executions
+                    )
+                    size = sum(Decimal(e["size"]) for e in executions)
+                    executed_price = (total / size).quantize(Decimal("0.01"))
+                    executed_time = executions[0]["timestamp"]
+                except Exception as e:
+                    logger.warning(f"約定情報の計算失敗: {e}")
+
         logger.info(f"注文完了: {symbol} {jpy} 円 = {amount}")
         try:
             send_slack(f"[BUY] {symbol}注文成功: {jpy}円 = {amount}")
         except Exception as e:
             logger.warning(f"Slack通知失敗: {e}")
-        db.record_purchase_history(symbol, jpy, amount, purchase_type, current_price)
+        db.record_purchase_history(
+            symbol,
+            jpy,
+            amount,
+            purchase_type,
+            current_price,
+            executed_price=executed_price,
+            executed_time=executed_time,
+        )
     else:
         logger.error(f"注文失敗: {response.status_code} {response.text}")
         try:
@@ -117,9 +142,9 @@ def execute_base_purchase(current_prices, db, dry_run=False):
                     logger.warning(f"Slack通知失敗: {e}")
                 continue
 
-            response = place_order(symbol, amount)
+            response, order_id = place_order(symbol, amount)
             handle_order_result(
-                response, symbol, jpy, amount, current_price, "base", db
+                response, order_id, symbol, jpy, amount, current_price, "base", db
             )
         else:
             logger.info(f"{symbol} 基本購入スキップ（{interval_days}日未満）")

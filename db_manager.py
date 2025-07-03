@@ -42,7 +42,9 @@ class DBManager:
                     date TEXT NOT NULL,
                     jpy_amount TEXT NOT NULL,
                     crypto_amount TEXT NOT NULL,
-                    price TEXT NOT NULL
+                    price TEXT NOT NULL,
+                    executed_price TEXT NOT NULL,
+                    executed_time TEXT NOT NULL
                 )
             """
             )
@@ -130,7 +132,14 @@ class DBManager:
 
     # --- 指定通貨の購入履歴を記録する ---
     def record_purchase_history(
-        self, symbol, jpy_amount, crypto_amount, purchase_type, current_price
+        self,
+        symbol,
+        jpy_amount,
+        crypto_amount,
+        purchase_type,
+        current_price,
+        executed_price=None,
+        executed_time=None,
     ):
         date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         conn = None
@@ -145,8 +154,10 @@ class DBManager:
                     date,
                     jpy_amount,
                     crypto_amount,
-                    price
-                )VALUES (?, ?, ?, ?, ?, ?)
+                    price,
+                    executed_price,
+                    executed_time
+                )VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     symbol,
@@ -155,6 +166,8 @@ class DBManager:
                     str(jpy_amount),
                     str(crypto_amount),
                     str(current_price),
+                    str(executed_price),
+                    str(executed_time),
                 ),
             )
             conn.commit()

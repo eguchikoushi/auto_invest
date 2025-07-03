@@ -66,7 +66,12 @@ def place_order(symbol, size: Decimal):
 
     try:
         response = requests.post(ORDER_URL, headers=headers, data=body_json, timeout=5)
-        return response
+        if response.status_code == 200:
+            json_data = response.json()
+            order_id = json_data.get("data")
+            return response, order_id
+        else:
+            return response, None
     except Exception as e:
         logger.error(f"注文送信エラー: {e}")
         raise
@@ -116,3 +121,26 @@ def initialize_price_history_if_needed(symbol, db, required_days=15, force=False
             time.sleep(random.uniform(12.0, 15.0))
         except Exception as e:
             logger.warning(f"{target_date} の {symbol} 価格取得失敗: {e}")
+
+
+def get_executions_by_order(order_id):
+    base_url = "https://api.coin.z.com"
+    endpoint = "/private/v1/executions"
+    query = f"?orderId={order_id}"
+    timestamp = str(int(time.time() * 1000))
+    signature = generate_signature(timestamp, "GET", "/v1/executions", "")
+
+    headers = HEADERS.copy()
+    headers.update({"API-TIMESTAMP": timestamp, "API-SIGN": signature})
+
+    url = base_url + endpoint + query
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=5)
+        logger.info(f"[executions] status: {resp.status_code}")
+        logger.info(f"[executions] response text: {resp.text}")
+        resp.raise_for_status()
+        return resp.json().get("data", {}).get("list", [])
+    except Exception as e:
+        logger.error(f"約定情報取得エラー: {e}")
+        return []
