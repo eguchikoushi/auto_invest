@@ -83,11 +83,17 @@ def handle_order_result(
                 except Exception as e:
                     logger.warning(f"約定情報の計算失敗: {e}")
 
-        logger.info(f"注文完了: {symbol} {jpy} 円 = {amount}")
-        try:
-            send_slack(f"[BUY] {symbol}注文成功: {jpy}円 = {amount}")
-        except Exception as e:
-            logger.warning(f"Slack通知失敗: {e}")
+            if executed_price and executed_time:
+                log_msg = (
+                    f"{symbol} 注文成功 / 数量: {amount} / 約定価格: {executed_price}円"
+                )
+
+            else:
+                log_msg = f"{symbol} 注文成功 / 数量: {amount}（※約定情報取得失敗）"
+
+        logger.info(log_msg)
+        send_slack(log_msg)
+
         db.record_purchase_history(
             symbol,
             jpy,
@@ -98,11 +104,9 @@ def handle_order_result(
             executed_time=executed_time,
         )
     else:
-        logger.error(f"注文失敗: {response.status_code} {response.text}")
-        try:
-            send_slack(f"[ERROR] {symbol}注文失敗: {response.text}")
-        except Exception as e:
-            logger.warning(f"Slack通知失敗: {e}")
+        error_msg = f"{symbol}注文失敗: {response.status_code} {response.text}"
+        logger.error(error_msg)
+        send_slack(error_msg)
 
 
 # --- 基本購入を実行する ---
@@ -135,11 +139,8 @@ def execute_base_purchase(current_prices, db, dry_run=False):
                 min_unit, rounding=ROUND_DOWN
             )
             if dry_run:
-                logger.info(f"[DRY-RUN] {symbol} テスト注文: {jpy}円 = {amount}")
-                try:
-                    send_slack(f"[DRY-RUN] {symbol} テスト注文: {jpy}円 = {amount}")
-                except Exception as e:
-                    logger.warning(f"Slack通知失敗: {e}")
+                logger.info(f"{symbol} テスト注文 / 数量: {amount}")
+                send_slack(f"{symbol} テスト注文 / 数量: {amount}")
                 continue
 
             response, order_id = place_order(symbol, amount)
@@ -216,18 +217,17 @@ def perform_add_purchase(symbol, conf, current_price, db, reasons, dry_run=False
     min_unit = Decimal(str(conf["min_order_amount"]))
     amount = (Decimal(jpy) / current_price).quantize(min_unit, rounding=ROUND_DOWN)
 
-    try:
-        prefix = "[DRY-RUN] " if dry_run else "[BUY] "
-        send_slack(f"{prefix}{symbol} 追加購入実行: {', '.join(reasons)}")
-    except Exception as e:
-        logger.warning(f"Slack通知失敗: {e}")
+    level = "DRY-RUN" if dry_run else "BUY"
+    reason_msg = f"{symbol} 追加購入実行: " + " / ".join(reasons)
+    order_msg = (
+        f"{symbol} テスト注文: {amount}" if dry_run else f"{symbol} 注文: {amount}"
+    )
+
+    logger.info(reason_msg)
 
     if dry_run:
-        logger.info(f"[DRY-RUN] {symbol} テスト注文: {jpy}円 = {amount}")
-        try:
-            send_slack(f"[DRY-RUN] {symbol} テスト注文: {jpy}円 = {amount}")
-        except Exception as e:
-            logger.warning(f"Slack通知失敗: {e}")
+        logger.info(order_msg)
+        send_slack(order_msg, level=level)
         return
 
     response = place_order(symbol, amount)
