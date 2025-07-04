@@ -47,14 +47,9 @@ def check_balance():
     if balance is not None and balance < threshold:
         msg = f"日本円残高がしきい値を下回りました: {balance}円（閾値: {threshold}円）"
         logger.warning(msg)
-        try:
-            send_slack(msg)
-        except Exception as e:
-            logger.warning(f"Slack通知失敗: {e}")
-        try:
-            send_email("【自動積立BOT】残高警告", msg)
-        except Exception as e:
-            logger.warning(f"メール通知失敗: {e}")
+
+        send_slack(msg)
+        send_email("【自動積立BOT】残高警告", msg)
 
 
 def update_all_price_history(db):
@@ -107,22 +102,19 @@ def check_sudden_price_change(db):
         logger.info(f"{symbol} 急落・急騰検知を実行")
 
         if change <= drop_threshold:
-            msg = f"[ALERT] {symbol} が急落: {change:.2f}%（{old_price} → {new_price}）"
-            logger.warning(msg)
-            try:
-                send_slack(msg)
-            except Exception as e:
-                logger.warning(f"Slack通知失敗: {e}")
+            log_msg = (
+                f"{symbol} 急落検知 / 変化率: {change:.2f}% / 現在価格: {new_price}）"
+            )
+            logger.info(log_msg)
+
+            send_slack(log_msg, level="ALERT")
 
         elif change >= rise_threshold:
-            msg = (
-                f"[ALERT] {symbol} が急騰: +{change:.2f}%（{old_price} → {new_price}）"
+            log_msg = (
+                f"{symbol} 急騰検知 / 変化率: {change:.2f}% / 現在価格: {new_price}）"
             )
-            logger.warning(msg)
-            try:
-                send_slack(msg)
-            except Exception as e:
-                logger.warning(f"Slack通知失敗: {e}")
+            logger.info(log_msg)
+            send_slack(log_msg, level="ALERT")
 
 
 def main():
