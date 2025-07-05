@@ -137,8 +137,6 @@ def get_executions_by_order(order_id):
 
     try:
         resp = requests.get(url, headers=headers, timeout=5)
-        logger.info(f"[executions] status: {resp.status_code}")
-        logger.info(f"[executions] response text: {resp.text}")
         resp.raise_for_status()
         return resp.json().get("data", {}).get("list", [])
     except Exception as e:
