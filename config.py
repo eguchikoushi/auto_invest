@@ -72,6 +72,23 @@ def validate_settings(settings):
         logger.error("balance_warning_threshold_jpy は0以上の整数である必要があります")
         sys.exit(1)
 
+    # --- alertcheck ---
+    alertcheck = settings.get("alertcheck", {})
+
+    if "enabled" in alertcheck and not isinstance(alertcheck["enabled"], bool):
+        logger.error("alertcheckの 'enabled' はboolである必要があります")
+        sys.exit(1)
+
+    for k in ("drop_threshold_percent", "rise_threshold_percent"):
+        if k in alertcheck and not isinstance(alertcheck[k], (int, float)):
+            logger.error(f"alertcheckの '{k}' は数値である必要があります")
+            sys.exit(1)
+
+    symbols = alertcheck.get("enabled_symbols", [])
+    if not isinstance(symbols, list):
+        logger.error("alertcheckの 'enabled_symbols' はリストである必要があります")
+        sys.exit(1)
+
     logger.info("設定ファイルバリデーション完了")
 
 
